@@ -1,0 +1,51 @@
+---
+title: "Lab 12 Homework"
+author: "Marina Puffer"
+format: pdf
+---
+
+# Population Scale Analysis 
+
+One sample is obviously not enough to know what is happening in a population. You are
+interested in assessing genetic differences on a population scale. So, you processed about
+~230 samples and did the normalization on a genome level. Now, you want to find whether
+there is any association of the 4 asthma-associated SNPs (rs8067378...) on ORMDL3
+expression.
+
+## Q13: Read this file into R and determine the sample size for each genotype and their
+corresponding median expression levels for each of these genotypes.
+
+```{r}
+expr <- read.table("rs8067378_ENSG00000172057.6.txt")
+head(expr)
+```
+```{r}
+nrow(expr)
+```
+Sample size for each genotype:
+```{r}
+table(expr$geno)
+```
+
+```{r}
+median(expr$exp[expr$geno=="A/A"])
+median(expr$exp[expr$geno=="A/G"])
+median(expr$exp[expr$geno=="G/G"])
+```
+Median expression value for A/A is 31.25, A/G is 25.06, and G/G is 20.07. 
+
+
+
+```{r}
+library(ggplot2)
+```
+
+## Q14: Generate a boxplot with a box per genotype, what could you infer from the relative
+expression value between A/A and G/G displayed in this plot? Does the SNP effect the
+expression of ORMDL3?
+Make a boxplot
+```{r}
+ggplot(expr)+aes(x=geno, y=exp)+geom_boxplot()
+```
+Median expression levels for the genotypes are shown above. The A/A allele is more highly expressed than G/G, so the G/G SNP likely decreases the expression of this gene. 
+

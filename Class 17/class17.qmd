@@ -1,0 +1,25 @@
+---
+title: "Class 17"
+author: "Marina Puffer (A16341339)"
+format: pdf
+---
+
+# 10. Using RStudio online (or locally) to read your output
+
+```{r}
+read.delim(mm-second.x.zebrafish.tsv)
+```
+
+
+```{r}
+c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+```
+
+```{r}
+library(ggplot2)
+ggplot(b, aes(pident, bitscore)) + geom_point(alpha=0.1) 
+```
+```{r}
+hist($bitscore)
+```
+

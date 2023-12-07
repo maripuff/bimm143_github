@@ -1,0 +1,464 @@
+---
+title: "Class 10"
+author: "Marina Puffer (A16341339)"
+format: pdf
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+# 1. Introduction to the RCSB Protein Data Bank (PDB)
+
+Downloaded composition stats from: https://www.rcsb.org/stats/summary
+
+For context: Release 2023_04, 13-Sept-2023 of UniProtKB?TrEMBL contians
+251,600,768 sequence entries. The PDB only contains 183,201.
+
+```{r}
+stats <- read.csv("PDBstats.csv", row.names=1)
+stats
+```
+
+The numbers are read as characters because there are commas, so we have
+to remove the commas.
+
+```{r}
+x <- stats$X.ray
+x
+```
+
+```{r}
+as.numeric(gsub(",", "", x))
+```
+
+Write a function based on this so it can be replicated for all columns
+easily
+
+```{r}
+rm.comma <- function(x){
+  as.numeric(gsub(",", "", x))
+}
+```
+
+```{r}
+rm.comma(stats$EM)
+```
+
+I can use `apply` to fix the whole table
+
+```{r}
+pdbstats <- apply(stats, 2, rm.comma)
+rownames(pdbstats) <- rownames(stats)
+head(pdbstats)
+```
+
+## Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+```{r}
+totals <- apply(pdbstats, 2, sum)
+round(totals/totals["Total"]*100, 2)
+```
+
+84.83% of structures in PDB are solved by X-Ray, 8.33% are solved by
+Electron Microscopy.
+
+## Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+round(pdbstats[1, "Total"]/sum(pdbstats[,"Total"])*100, 2)
+```
+
+86.67% of structures in PDB are protein.
+
+## Q3: Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB?
+
+> SKIPPED
+
+## Q4: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+The hydrogen atoms are very small, so small that they are not visible in
+the structure.
+
+## Q5: There is a critical "conserved" water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have
+
+The water molecule is water 308.
+
+## Q6: Generate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend "Ball & Stick" for these side-chains). Add this figure to your Quarto document.
+
+![](1HSG.png)
+
+# Introduction to Bio3D in R
+
+```{r}
+library(bio3d)
+pdb <- read.pdb("1hsg")
+```
+
+```{r}
+pdb
+```
+
+```{r}
+head(pdb$atom)
+```
+
+## Q7: How many amino acid residues are there in this pdb object?
+
+198 amino acid residues
+
+## Q8: Name one of the two non-protein residues?
+
+HOH
+
+## Q9: How many protein chains are in this structure?
+
+2
+
+# Predicting functional motions of a single structure
+
+Finish today with a bioinformatics calculation to predict the functional
+motionso f a PDB structure
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+```{r}
+m <- nma(adk)
+plot(m)
+mktrj(m, file="adk_m7.pdb")
+```
+
+Bottom plot - peaks are flexible portions of protein
+
+Continued on 11/7 \# 4. Comparative structure analysis of Adenylate
+Kinase Starting from only one Adk PDB identifier (PDB:1AKE), we will
+search the entire PDB for related structures using BLAST, fetch, align
+and superpose the identified structures, perform PCA and finally
+calculate the normal modes of each individual structure.
+
+We need some packages: `bio3d` and `msa`. The `msa` package is from
+BioConductor. These packages focus on genomics type work and are managed
+by the `BioManager` package.
+
+Install `install.packages("BiocManager")` and then
+`BiocManager::install("msa")` all entered into the R console.
+
+## Q10. Which package is found only on BioConductor and not CRAN?
+
+msa
+
+## Q11. Which of the above packages is not found on BioConductor or CRAN?
+
+bio3d-view
+
+## Q12. True or False? Functions from the devtools package can be used to install packages from GitHub and BitBucket?
+
+True
+
+```{r}
+library(bio3d)
+aa <- get.seq("1ake_A")
+```
+
+```{r}
+aa
+```
+
+## Q13. How many amino acids are in this sequence, i.e. how long is this sequence?
+
+214
+
+Use sequence as query to BLAST search the PDB to find similar sequences
+and structures.
+
+```{r}
+# Blast or hmmer search 
+#b <- blast.pdb(aa)
+
+# Plot a summary of search results
+#hits <- plot(b)
+
+# List out some 'top hits', best matches
+#head(hits$pdb.id)
+```
+
+```{r}
+#b <- blast.pdb(aa)
+```
+
+```{r}
+#hits <- plot(b)
+#hits$pdb.id
+```
+
+```{r}
+hits <- NULL
+hits$pdb.id <- c('1AKE_A','6S36_A','6RZE_A','3HPR_A','1E4V_A','5EJE_A','1E4Y_A','3X2S_A','6HAP_A','6HAM_A','4K46_A','3GMT_A','4PZL_A')
+```
+
+Blast search and filtering identified 13 related PDB structures to our
+query sequence.
+
+Sidenote: let's annotate the structures (what they arem what speceis,
+what experiment they were found in. For this, use `pdb.annotate()`
+
+```{r}
+anno <- pdb.annotate(hits$pdb.id)
+```
+
+Use `attributes()` to find out what the function yeilds
+
+```{r}
+attributes(anno)
+```
+
+```{r}
+head(anno)
+```
+
+Now we can download all the structures Use `get.pdb()` and `pdbslit()`
+to fetch and parse the structures. Download related PDB files
+
+```{r}
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+#gzip= smaller file
+#path= makes file in new directory
+```
+
+Now we have these related structures, we can Align and Superimpose them
+
+```{r}
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+#exefile, can use diff formats but msa is easiest today
+```
+
+```{r}
+pdbs
+```
+
+## Principal Component Analysis
+
+Perform PCA
+
+```{r}
+pc.xray<- pca(pdbs)
+plot(pc.xray)
+```
+
+Results of PCA on Adenylate kinase X-ray structures. Each dot represents
+one PDB structure.
+
+Further visualization, visualizing the first PCA
+
+```{r}
+pc1 <- mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+
+Shows the major differences between all the structures.
+
+# Lab 11
+
+![](HIVPR_MONOMER_94B5B_UNRELAXED_RANK_001_ALPHAFOLD2_PTM_MODEL_5_SEED_000.PDB-HIVPR_MONOMER_94B5B_UNRELAXED_RANK_002_ALPHAFOLD2_PTM_MODEL_4_SEED_000.PDB-HIVPR_MONOMER_94B5B_UNRELAXED_RANK_003_ALPHAFOLD2_PTM_MODEL_1_SEED_000.PDB-HIVPR_MONOMER_9.png)
+
+# Custom analysis of resulting models
+
+Move AlphaFols results directory into the RStudio project directory
+
+```{r}
+results_dir <- "hivpr_dimer_23119"
+```
+
+```{r}
+#File names for all PDB models
+pdb_files <- list.files(path=results_dir,pattern="*.pdb",full.names = TRUE)
+pdb_files
+```
+
+```{r}
+library(bio3d)
+pdbs <- pdbaln(pdb_files, fit=TRUE, exefile="msa")
+```
+
+```{r}
+pdbs
+```
+
+```{r}
+rd <- rmsd(pdbs)
+range(rd)
+```
+
+Draw a heatmap of RMSD matrix values
+
+```{r}
+library(pheatmap)
+
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+```{r}
+# Read a reference PDB structure
+pdb <- read.pdb("1hsg")
+```
+
+Obtain secondary structure from a call to `stride()` or `dssp()`
+
+```{r}
+plotb3(pdbs$b, typ="l", lwd=2, sse=pdb)
+points(pdbs$b[2,], typ="l", col="red")
+points(pdbs$b[3,], typ="l", col="blue")
+points(pdbs$b[4,], typ="l", col="darkgreen")
+points(pdbs$b[5,], typ="l", col="orange")
+abline(v=100, col="gray")
+```
+
+Improve the superposition/fitting of our models by finding the most
+consistent "rigid core" common across all models. Use `core.find()`
+
+```{r}
+core <- core.find(pdbs)
+#Use identified core atom positions as basis for more suitable superposition
+core.inds <- print(core, vol=0.5)
+```
+
+```{r}
+xyz <- pdbfit(pdbs, core.inds, outpath="corefit_structures")
+```
+
+Can now open the resulting superposed coordinates in Mol\* and color by
+Uncertainty/Disorder
+
+![](HIVPR_DIMER_23119_UNRELAXED_RANK_001_ALPHAFOLD2_MULTIMER_V3_MODEL_1_SEED_000.PDB_FLSQ.PDB-HIVPR_DIMER_23119_UNRELAXED_RANK_005_ALPHAFOLD2_MULTIMER_V3_MODEL_3_SEED_000.PDB_FLSQ.PDB-HIVPR_DIMER_23119_UNRELAXED_RANK_002_ALPHAFOLD2_MULTIMER_V3_.png)
+
+Update RMSD analysis and examine RMSF between positions of the structure
+
+```{r}
+rd <- rmsd(xyz)
+```
+
+Change names
+
+```{r}
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+```{r}
+rf <- rmsf(xyz)
+
+plotb3(rf, sse=pdb)
+abline(v=100, col="gray", ylab="RMSF")
+```
+
+## Predicted Alignment Error for Domains
+
+```{r}
+library(jsonlite)
+
+# Listing of all PAE JSON files
+pae_files <- list.files(path=results_dir,
+                        pattern=".*model.*\\.json",
+                        full.names = TRUE)
+```
+
+Examples: read 1st and 5th files
+
+```{r}
+pae1 <- read_json(pae_files[1],simplifyVector = TRUE)
+pae5 <- read_json(pae_files[5],simplifyVector = TRUE)
+
+attributes(pae1)
+```
+
+```{r}
+# Per-residue pLDDT scores 
+#  same as B-factor of PDB..
+head(pae1$plddt) 
+```
+
+Looking at max PAE values, we can see model 5 is much worse than
+model 1. (the lower the better)
+
+```{r}
+pae1$max_pae
+```
+
+```{r}
+pae5$max_pae
+```
+
+Plot these
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)")
+```
+
+```{r}
+plot.dmat(pae5$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+Plot these using the same z range
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+## Residue conservation from alignment file
+
+```{r}
+aln_file <- list.files(path=results_dir,
+                       pattern=".a3m$",
+                        full.names = TRUE)
+aln_file
+```
+
+```{r}
+aln <- read.fasta(aln_file[1], to.upper = TRUE)
+```
+
+Number of sequences in the alignment:
+
+```{r}
+dim(aln$ali)
+```
+
+Score residue conservation in the alignment with `conserv()`
+
+```{r}
+sim <- conserv(aln)
+plotb3(sim[1:99], sse=trim.pdb(pdb, chain="A"))
+```
+
+Conserved active site residues are D25, T26, G27, A28
+
+```{r}
+con <- consensus(aln, cutoff = 0.9)
+con$seq
+```
+
+For the final visualization, map the conservation score to Occupancy
+column of PDB file for viewing in Mol\*
+
+```{r}
+m1.pdb <- read.pdb(pdb_files[1])
+occ <- vec2resno(c(sim[1:99], sim[1:99]), m1.pdb$atom$resno)
+write.pdb(m1.pdb, o=occ, file="m1_conserv.pdb")
+```
+
+![](M1_CONSERV.PDB.png) Can see the central conserved active site in the
+model where the peptide substrate binds between domains.
