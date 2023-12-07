@@ -1,0 +1,226 @@
+---
+title: "Class 06: R Functions"
+author: "Marina Puffer (PID:A16341339)"
+format: pdf
+---
+
+## All about functions in R
+
+Functions are the way we get stuff done in R. We call a function to read data, compute stuff, plot stuff, etc.
+
+R makes writing functions accessible but we should always start by trying to get a working snippet of code first before we write our function.
+
+## Today's lab
+
+```{r}
+# Example input vectors to start with
+student1 <- c(100, 100, 100, 100, 100, 100, 100, 90)
+student2 <- c(100, NA, 90, 90, 90, 90, 97, 80)
+student3 <- c(90, NA, NA, NA, NA, NA, NA, NA)
+```
+
+If we want to get the average, we can use the `mean()` function
+
+```{r}
+mean(student1)
+```
+
+Let's be nice instructors by dropping the lowest score, so the answer here should be 100 Could use the `min()` function to find the lowest score:
+
+```{r}
+min(student1)
+```
+
+This isn't that helpful though, but `which.min()` is able to tell us the location of the lowest score:
+
+```{r}
+student1
+which.min(student1)
+```
+
+```{r}
+student1[8]
+student1[which.min(student1)]
+```
+
+But we want to find the average of everything but the lowest score, use the minus sign!
+
+```{r}
+student1[-8]
+student1[-which.min(student1)]
+```
+
+Now the average of this gives the final grade with the dropped score:
+
+```{r}
+mean(student1[-which.min(student1)])
+```
+
+Try it on student 2
+
+```{r}
+student2
+mean(student2[-which.min(student2)])
+```
+
+Where's the problem?
+
+```{r}
+mean(student2)
+```
+
+Can't take the mean if NA is there, default mean is `na.rm=FALSE`, so change to `na.rm=TRUE`
+
+```{r}
+mean(student2, na.rm=TRUE)
+```
+
+Just dropped the NA How about student 3:
+
+```{r}
+student3
+mean(student3, na.rm=TRUE)
+```
+
+Dropped all the NA's! This score isn't fair
+
+Want to stop working with `student1`, etc and typing it out each time, so let's work with the variable `x`
+
+```{r}
+x <- student2
+```
+
+We want to override the NA values, so if you miss a homework you score 0 on the homework Google and Claude told me about `is.na()`
+
+```{r}
+is.na(x)
+```
+
+```{r}
+x[is.na(x)]
+```
+
+We can use logicals to index a vector, example:
+
+```{r}
+y <- 1:5
+y
+y>3
+y[y>3]
+y[y>3] <- 100
+```
+
+```{r}
+x[is.na(x)] <- 0
+x
+```
+
+```{r}
+mean(x[-which.min(x)])
+
+```
+
+```{r}
+x <- student3
+x[is.na(x)] <- 0
+mean(x[-which.min(x)])
+```
+
+Completed code:
+
+```{r}
+x <- student1
+#mask NA values to 0
+x[is.na(x)] <- 0
+#drop lowest score and get the mean
+mean(x[-which.min(x)])
+```
+
+# Q1.
+
+Write a function grade() to determine an overall grade from a vector of student homework assignment scores dropping the lowest single score. If a student misses a homework (i.e. has an NA value) this can be used as a score to be potentially dropped. Your final function should be adquately explained with code comments and be able to work on an example class gradebook such as this one in CSV format: "https://tinyurl.com/gradeinput"
+
+```{r}
+grade <- function(x) {
+#mask NA values to 0
+x[is.na(x)] <- 0
+#drop lowest score and get the mean
+mean(x[-which.min(x)])
+}
+```
+
+Use the function:
+
+```{r}
+grade(student3) 
+```
+
+We need to read the gradebook
+
+```{r}
+gradebook <- read.csv("https://tinyurl.com/gradeinput", row.names=1)
+#make sure to use straight quotes "", rather than curly ones when reading a file
+gradebook
+```
+
+Use `apply()`
+
+```{r}
+#`array(x(array), margin(1=rows, 2=columns), fun(function))
+student_grades <- apply(gradebook, 1, grade)
+student_grades
+```
+
+# Q2.
+
+Using your grade() function and the supplied gradebook, Who is the top scoring student overall in the gradebook?
+
+```{r}
+max(student_grades)
+which.max(student_grades)
+```
+
+Top scoring student is student 18 with a score of 94.5
+
+# Q3.
+
+From your analysis of the gradebook, which homework was toughest on students (i.e. obtained the lowest scores overall?
+
+```{r}
+mask <- gradebook
+mask[is.na(mask)] <- 0
+mean_hw <- apply(mask, 2, mean)
+mean_hw
+which.min(mean_hw)
+```
+
+Homework 2 obtained the lowest scores overall.
+
+Another way of doing it...
+
+```{r}
+which.min(apply(gradebook,2,mean,na.rm=T))
+```
+
+This version eliminates all NA scores, so only those who did the homework are taken into account
+
+We could do the sum
+
+```{r}
+which.min(apply(gradebook,2,sum,na.rm=T))
+```
+
+Another different answer by using sum
+
+# Q4.
+
+Optional Extension: From your analysis of the gradebook, which homework was most predictive of overall score (i.e. highest correlation with average grade score)?
+
+Use the function `cor()`
+
+```{r}
+apply(mask, 2, cor, y=student_grades)
+which.max(apply(mask, 2, cor, y=student_grades))
+```
+
+Homework 5 is the most correlated with overall student scores.
